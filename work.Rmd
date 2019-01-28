@@ -1,0 +1,63 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+```{r}
+library('tidyverse')
+```
+
+
+```{r}
+inputfolder <- 'data'
+file <- 'ATP_matches_final.csv'
+atpframe <- read_csv(file.path(inputfolder,file))
+cols <- grep("Aces|Rank|DoubleFault",colnames(atpframe),value = TRUE)
+for (column in cols){
+  atpframe[column] <- lapply(atpframe[column],as.integer)}
+
+str(atpframe)
+
+```
+looks like this data is ok
+
+```{r}
+
+?as.Date
+hardframe<- atpframe %>% 
+  mutate(datetime = as.Date(Tournament_Date,"%d-%b-%y")) %>% 
+  filter(grepl('Hard',Court_Surface))
+
+winframe <- hardframe %>% 
+  select(matches('Winner|date')) %>% 
+  mutate(won=1)
+colnames(winframe) = gsub("Winner","Player",colnames(winframe))
+
+loseframe <- hardframe %>% 
+  select(matches('Loser|date')) %>% 
+  mutate(won=0)
+colnames(loseframe) = gsub("Loser","Player",colnames(loseframe))
+
+head(winframe)
+head(loseframe)
+```
+```{r}
+str(winframe)
+str(loseframe)
+playerframe <- bind_rows(winframe,loseframe)
+str(playerframe)
+```
+
+```{r}
+ratiolist = c('FirstServes','SecondServes','BreakPoints','ReturnPoints')
+for(col in ratiolist){
+  numcol <- playerframe %>% select(matches(paste("Player_",col,"_Won",sep='')))
+  domcol <- playerframe %>% 
+    select(matches(paste("Player_",col,sep=''))) %>% 
+    select(-matches(paste("Player_",col,"_Won",sep='')))
+  tempframe = numcol/domcol
+  playerframe <- playerframe %>% 
+    mutate( !!paste(col,"_ratio",sep='') := pull(tempframe,!!paste("Player_",col,"_Won",sep='')))
+}
+head(playerframe)
+```
+
